@@ -89,23 +89,23 @@ export default function NaveAIChat() {
 
   const capabilities = [
     {
-      title: "Capabilities",
-      desc: "How can Nave help my business grow?",
+      title: "Layanan",
+      desc: "Apa saja layanan yang tersedia di Nave Solution?",
       icon: <Briefcase className="text-blue-600" size={18} />,
     },
     {
-      title: "Design",
-      desc: "Show me your latest web portfolio works",
+      title: "Portofolio",
+      desc: "Boleh lihat proyek atau portofolio Nave Solution?",
       icon: <Paintbrush className="text-blue-600" size={18} />,
     },
     {
-      title: "Pricing",
-      desc: "What is the pricing for UI/UX design packages?",
+      title: "Harga",
+      desc: "Berapa harga pembuatan website atau chatbot?",
       icon: <DollarSign className="text-blue-600" size={18} />,
     },
     {
       title: "Automation",
-      desc: "How does n8n automation work for my workflow?",
+      desc: "Bagaimana cara kerja Chatbot Automation untuk bisnis saya?",
       icon: <Sliders className="text-blue-600" size={18} />,
     },
   ];
