@@ -95,7 +95,7 @@ export default function NaveAIChat() {
     },
     {
       title: "Portofolio",
-      desc: "Boleh lihat proyek atau portofolio Nave Solution?",
+      desc: "lihat proyek atau portofolio",
       icon: <Paintbrush className="text-blue-600" size={18} />,
     },
     {
