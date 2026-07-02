@@ -147,10 +147,10 @@ export default function NaveAIChat() {
         }`}
       >
         <div className="space-y-6 overflow-y-auto h-full pb-4 scrollbar-none">
-          {/* Logo Brand */}
+          {/* Logo Brand Menggunakan Gambar */}
           <div className="flex items-center justify-between">
-            <div className="text-xl font-bold tracking-tight text-gray-900">
-              NAVE <span className="text-gray-400 font-light italic">Solution</span>
+            <div className="h-7 w-auto flex items-center">
+              <img src="/logo.jpg" alt="Nave Solution" className="h-full object-contain invert mix-blend-screen" />
             </div>
             <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1 text-gray-500 hover:bg-gray-200 rounded">
               <X size={18} />
