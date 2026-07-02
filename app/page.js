@@ -147,9 +147,10 @@ export default function NaveAIChat() {
         }`}
       >
         <div className="space-y-6 overflow-y-auto h-full pb-4 scrollbar-none">
-          {/* Logo Brand Menggunakan Gambar Asli */}
+          {/* Logo Brand Menggunakan Gambar Asli - Diperbesar */}
           <div className="flex items-center justify-between">
-            <div className="h-8 w-auto flex items-center">
+            {/* Mengubah h-8 menjadi h-10 agar logo kelihatan lebih besar dan proporsional */}
+            <div className="h-10 w-auto flex items-center">
               <img src="/logo.png" alt="Nave Solution" className="h-full w-auto object-contain" />
             </div>
             <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1 text-gray-500 hover:bg-gray-200 rounded">
