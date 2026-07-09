@@ -185,7 +185,8 @@ export default function NaveAIChat() {
             <div className="h-10 w-auto flex items-center">
               <img src="/logo.png" alt="Nave Solution" className="h-full w-auto object-contain" />
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-gray-500 hover:bg-gray-200 rounded">
+            {/* Tombol X sekarang disembunyikan di desktop menggunakan md:hidden */}
+            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-gray-500 hover:bg-gray-200 rounded md:hidden">
               <X size={18} />
             </button>
           </div>
