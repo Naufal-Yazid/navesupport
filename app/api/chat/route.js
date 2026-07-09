@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    // Menerima data payload dari frontend UI website
-    const { message, sessionId } = await request.json();
+    // Menerima data payload dari frontend UI website (Termasuk deviceId)
+    const { message, sessionId, deviceId } = await request.json();
 
     // URL Webhook asli dari n8n milikmu
     const N8N_WEBHOOK_URL = "https://n8n.srv1768691.hstgr.cloud/webhook/nave-bot-webhook";
 
-    // Meneruskan data ke workflow n8n
+    // Meneruskan data lengkap ke workflow n8n
     const response = await fetch(N8N_WEBHOOK_URL, {
       method: "POST",
       headers: {
@@ -17,6 +17,7 @@ export async function POST(request) {
       body: JSON.stringify({
         sessionId: sessionId || "default_session",
         message: message,
+        deviceId: deviceId || "", // ✨ Mengirimkan Device ID permanen ke n8n
       }),
     });
 

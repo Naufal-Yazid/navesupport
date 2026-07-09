@@ -9,36 +9,67 @@ export default function NaveAIChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState("");
+  const [deviceId, setDeviceId] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false); // State untuk Popup Search
-  const [searchQuery, setSearchQuery] = useState(""); // State untuk input pencarian di popup
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [chatHistory, setChatHistory] = useState([]);
+  const [isMounted, setIsMounted] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // 🛠️ STATE DINAMIS UNTUK MENAMPUNG RIWAYAT CHAT LENGKAP DENGAN DATA PESANNYA
-  const [chatHistory, setChatHistory] = useState([]);
+  // Memfilter riwayat chat berdasarkan input pencarian user di popup modal
+  const filteredHistory = chatHistory.filter((item) => item && item.title && item.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // Memfilter riwayat dinamis berdasarkan input pencarian user di popup modal
-  const filteredHistory = chatHistory.filter((item) => item.title.toLowerCase().includes(searchQuery.toLowerCase()));
-
+  // 🛠️ EFFECT 1: Inisialisasi awal di browser (Aman dari SSR / Hydration Error)
   useEffect(() => {
-    setSessionId(`nave_session_${Math.random().toString(36).substring(2, 11)}`);
+    setIsMounted(true);
+
+    if (typeof window !== "undefined") {
+      try {
+        // Ambil atau buat Device ID permanen yang terkunci di browser ini
+        let savedDeviceId = window.localStorage.getItem("nave_device_id");
+        if (!savedDeviceId) {
+          savedDeviceId = "device_" + Math.random().toString(36).substring(2, 11);
+          window.localStorage.setItem("nave_device_id", savedDeviceId);
+        }
+        setDeviceId(savedDeviceId);
+      } catch (err) {
+        console.error("Gagal mengakses localStorage:", err);
+      }
+    }
+
+    // Catatan: setSessionId sengaja dikosongkan di sini agar tidak membuat
+    // sesi palsu di database sebelum user benar-benar mengetik chat.
   }, []);
 
+  // 🛠️ EFFECT 2: Auto-scroll ke pesan paling bawah setiap ada chat baru
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    if (isMounted) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isLoading, isMounted]);
 
+  // Tampilkan loading screen tipis jika komponen belum siap di client browser
+  if (!isMounted) {
+    return <div className="flex h-[100dvh] w-full items-center justify-center bg-white text-gray-400 text-sm font-sans">Loading Nave AI...</div>;
+  }
+
+  // 🛠️ FUNGSI KIRIM PESAN CHAT
   const handleSend = async (textToSend) => {
     const targetText = textToSend || input;
     if (!targetText.trim() || isLoading) return;
 
-    const userMessage = { role: "user", text: targetText };
+    // ✨ LOGIKA PENGAMAN: Generate Session ID hanya jika statusnya benar-benar kosong (awal chat baru)
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      currentSessionId = `nave_session_${Math.random().toString(36).substring(2, 11)}`;
+      setSessionId(currentSessionId);
+    }
 
-    // Cek apakah ini pesan pertama di sesi ini
+    const userMessage = { role: "user", text: targetText };
     const isFirstMessage = messages.length === 0;
     const firstUserText = targetText;
 
-    // 1. Update layar chat saat ini
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput("");
@@ -46,39 +77,40 @@ export default function NaveAIChat() {
     setIsSearchOpen(false);
     setIsLoading(true);
 
-    // 2. Jika ini bukan pesan pertama, update data array chat di history secara real-time
     if (!isFirstMessage) {
-      setChatHistory((prev) => prev.map((chat) => (chat.id === sessionId ? { ...chat, messages: updatedMessages } : chat)));
+      setChatHistory((prev) => prev.map((chat) => (chat.id === currentSessionId ? { ...chat, messages: updatedMessages } : chat)));
     }
 
     try {
+      // Mengirimkan pesan lengkap beserta Session ID aktif & Device ID permanen ke API internal
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage.text, sessionId }),
+        body: JSON.stringify({
+          message: userMessage.text,
+          sessionId: currentSessionId,
+          deviceId,
+        }),
       });
 
       const data = await response.json();
       const finalMessages = [...updatedMessages, { role: "assistant", text: data.reply }];
 
-      // Update layar chat utama dengan balasan bot
       setMessages(finalMessages);
 
-      // 3. LOGIKA AUTOMATIS UNTUK MEMBUAT ROOM BARU ATAU UPDATE ISI PESAN BOT
       if (isFirstMessage) {
         const topicTitle = firstUserText.length > 28 ? firstUserText.substring(0, 28) + "..." : firstUserText;
 
         const newHistoryItem = {
-          id: sessionId,
+          id: currentSessionId,
           title: topicTitle,
           date: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          messages: finalMessages, // Simpan seluruh history chat di objek ini
+          messages: finalMessages,
         };
 
         setChatHistory((prev) => [newHistoryItem, ...prev]);
       } else {
-        // Jika sudah chat panjang, pastikan balasan bot-nya ikut tersimpan di history state
-        setChatHistory((prev) => prev.map((chat) => (chat.id === sessionId ? { ...chat, messages: finalMessages } : chat)));
+        setChatHistory((prev) => prev.map((chat) => (chat.id === currentSessionId ? { ...chat, messages: finalMessages } : chat)));
       }
     } catch (error) {
       setMessages((prev) => [...prev, { role: "assistant", text: "⚠️ Maaf, sistem kami sedang mengalami gangguan. Coba sesaat lagi." }]);
@@ -110,21 +142,21 @@ export default function NaveAIChat() {
     },
   ];
 
-  // 🛠️ FUNGSI UNTUK PINDAH ROOM CHAT SEKALIGUS ME-LOAD ISI CHAT SEBELUMNYA
+  // 🛠️ FUNGSI UNTUK PINDAH ROOM ATAU MULAI ROOM CHAT BARU
   const startNewSession = (existingSessionId = "") => {
     setIsSidebarOpen(false);
     setInput("");
 
     if (existingSessionId) {
-      // 1. Cari data room chat lama berdasarkan ID-nya
       const clickedChat = chatHistory.find((chat) => chat.id === existingSessionId);
       if (clickedChat) {
         setSessionId(existingSessionId);
-        setMessages(clickedChat.messages || []); // Tarik dan tampilkan percakapan lalunya!
+        setMessages(clickedChat.messages || []);
       }
     } else {
-      // 2. Buat sesi kosong baru kalau tombol New Chat diklik
-      setSessionId(`nave_session_${Math.random().toString(36).substring(2, 11)}`);
+      // Ketika klik tombol New Chat, kosongkan layar dan kosongkan sessionId awal.
+      // Sesi baru akan digenerate otomatis begitu ketikan pertama dikirim.
+      setSessionId("");
       setMessages([]);
     }
   };
@@ -135,6 +167,7 @@ export default function NaveAIChat() {
 
     if (sessionId === idToDelete) {
       setMessages([]);
+      setSessionId("");
     }
   };
 
@@ -147,13 +180,12 @@ export default function NaveAIChat() {
         }`}
       >
         <div className="space-y-6 overflow-y-auto h-full pb-4 scrollbar-none">
-          {/* Logo Brand Menggunakan Gambar Asli - Diperbesar */}
+          {/* Logo Brand Menggunakan Gambar Asli */}
           <div className="flex items-center justify-between">
-            {/* Mengubah h-8 menjadi h-10 agar logo kelihatan lebih besar dan proporsional */}
             <div className="h-10 w-auto flex items-center">
               <img src="/logo.png" alt="Nave Solution" className="h-full w-auto object-contain" />
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1 text-gray-500 hover:bg-gray-200 rounded">
+            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-gray-500 hover:bg-gray-200 rounded">
               <X size={18} />
             </button>
           </div>
@@ -168,7 +200,7 @@ export default function NaveAIChat() {
             <Search size={16} /> Search history
           </button>
 
-          {/* Recent Section (DINAMIS + LOAD ROOM PERCAKAPAN) */}
+          {/* Recent List Section */}
           <div className="pt-2">
             <div className="text-[10px] font-bold tracking-wider text-gray-400 uppercase px-3 mb-2">Recent</div>
             <div className="flex flex-col gap-1 w-full">
@@ -190,7 +222,6 @@ export default function NaveAIChat() {
                       <span className="text-[9px] text-gray-400 font-normal shrink-0 group-hover:opacity-0 transition-opacity duration-150">{chat.date}</span>
                     </button>
 
-                    {/* Tombol Delete */}
                     <button
                       onClick={(e) => deleteChat(e, chat.id)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-200/60 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150"
@@ -206,7 +237,6 @@ export default function NaveAIChat() {
         </div>
       </aside>
 
-      {/* Overlay Backdrop untuk Mobile Sidebar */}
       <AnimatePresence>{isSidebarOpen && <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/10 z-20 md:hidden backdrop-blur-sm" />}</AnimatePresence>
 
       {/* ================= POPUP MODAL SEARCH HISTORY ================= */}
